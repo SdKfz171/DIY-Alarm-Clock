@@ -39,149 +39,90 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_hal.h"
-#include "rtc.h"
-#include "usart.h"
-#include "gpio.h"
 
 /* USER CODE BEGIN Includes */
-//#include <time.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 #include "queue.h"
-#include "mp3.h"
+#include "keypad.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
+RTC_HandleTypeDef hrtc;
+
+TIM_HandleTypeDef htim4;
+
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-#define STX	0x02
-#define ETX	0x03
-
-#define BASE_VOLUME 10
-
-#define SEG_PORT GPIOE
-
-uint32_t Number_Pin[7] = { 
-	SEG_A_Pin,
-	SEG_B_Pin,
-	SEG_C_Pin,
-	SEG_D_Pin,
-	SEG_E_Pin,
-	SEG_F_Pin,
-	SEG_G_Pin
-};
-
-#define _0 { 0, 0, 0, 0, 0, 0, 1 }
-#define _1 { 1, 0, 0, 1, 1, 1, 1 }
-#define _2 { 0, 0, 1, 0, 0, 1, 0 }
-#define _3 { 0, 0, 0, 0, 1, 1, 0 }
-#define _4 { 1, 0, 0, 1, 1, 0, 0 }
-#define _5 { 0, 1, 0, 0, 1, 0, 0 }
-#define _6 { 0, 1, 0, 0, 0, 0, 0 }
-#define _7 { 0, 0, 0, 1, 1, 1, 1 }
-#define _8 { 0, 0, 0, 0, 0, 0, 0 }
-#define _9 { 0, 0, 0, 0, 1, 0, 0 }
-
-uint8_t Number[10][7] = { _0, _1, _2, _3, _4, _5, _6, _7, _8, _9 };
-
-uint8_t aShowTime[50] = {0};
-
-uint8_t second_count = 0;
-uint8_t minute_count = 0;
-uint8_t hour_count = 0;
-
-uint8_t Buffer[6];
+RTC_TimeTypeDef ALARM_TIME;
 
 bool Alarm_State = false;
 bool Setting_Session = false;
 bool Alarm_Session = false;
+bool Time_Session = false;
 
 uint8_t password_1 = 0;
 uint8_t password_2 = 0;
-
-uint8_t Keys[4][4] = {
-	'1', '2', '3', 'A',
-	'4', '5', '6', 'B',
-	'7', '8', '9', 'C',
-	'*', '0', '#', 'D'
-};
-
-uint8_t Key = 0;
-
-#define ROW_PORT GPIOD
-#define COL_PORT GPIOD
-
-#define ROWS 4
-#define COLS 4
-
-// OUTPUT
-uint8_t Row_Pin[4] = {
-	R1_Pin,
-	R2_Pin,
-	R3_Pin,
-	R4_Pin
-};
-
-// INPUT
-uint8_t Column_Pin[4] = {
-	C1_Pin,
-	C2_Pin,
-	C3_Pin,
-	C4_Pin
-};
-
-RTC_TimeTypeDef ALARM_TIME;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
+static void MX_RTC_Init(void);
+static void MX_TIM4_Init(void);
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+                                
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-void Set_Minutes(uint8_t min);
-void Set_Hours(uint8_t hou);
-void Set_Number(uint8_t num, uint8_t dig);
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+void GPIO_SetPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin){
+	HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_SET);
+}
+
+void GPIO_ResetPin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin){
+	HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_RESET);
+}
+
 void Set_Number(uint8_t num, uint8_t dig){	
 	switch(dig){
 		case 1:
-			HAL_GPIO_WritePin(DIGIT_1_GPIO_Port, DIGIT_1_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(DIGIT_2_GPIO_Port, DIGIT_2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_3_GPIO_Port, DIGIT_3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_4_GPIO_Port, DIGIT_4_Pin, GPIO_PIN_RESET);
-			for(int i = 0; i < 7; i++)
-				HAL_GPIO_WritePin(SEG_PORT, Number_Pin[i], Number[num][i]);
+			SSD1306_SetCursor(0, 24);
+			SSD1306_WriteChar(num + '0', Font_16x32, White);
+	  
+			SSD1306_UpdateScreen();
 			break;
 		case 2:
-			HAL_GPIO_WritePin(DIGIT_1_GPIO_Port, DIGIT_1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_2_GPIO_Port, DIGIT_2_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(DIGIT_3_GPIO_Port, DIGIT_3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_4_GPIO_Port, DIGIT_4_Pin, GPIO_PIN_RESET);
-			for(int i = 0; i < 7; i++)
-				HAL_GPIO_WritePin(SEG_PORT, Number_Pin[i], Number[num][i]);
+			SSD1306_SetCursor(16, 24);
+			SSD1306_WriteChar(num + '0', Font_16x32, White);
+	  
+			SSD1306_UpdateScreen();
 			break;
 		case 3:
-			HAL_GPIO_WritePin(DIGIT_1_GPIO_Port, DIGIT_1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_2_GPIO_Port, DIGIT_2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_3_GPIO_Port, DIGIT_3_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(DIGIT_4_GPIO_Port, DIGIT_4_Pin, GPIO_PIN_RESET);
-			for(int i = 0; i < 7; i++)
-				HAL_GPIO_WritePin(SEG_PORT, Number_Pin[i], Number[num][i]);
+			SSD1306_SetCursor(48, 24);
+			SSD1306_WriteChar(num + '0', Font_16x32, White);
+	  
+			SSD1306_UpdateScreen();
 			break;
 		case 4:
-			HAL_GPIO_WritePin(DIGIT_1_GPIO_Port, DIGIT_1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_2_GPIO_Port, DIGIT_2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_3_GPIO_Port, DIGIT_3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(DIGIT_4_GPIO_Port, DIGIT_4_Pin, GPIO_PIN_SET);
-			for(int i = 0; i < 7; i++)
-				HAL_GPIO_WritePin(SEG_PORT, Number_Pin[i], Number[num][i]);
+			SSD1306_SetCursor(64, 24);
+			SSD1306_WriteChar(num + '0', Font_16x32, White);
+	  
+			SSD1306_UpdateScreen();
 			break;
 	}
 }
@@ -190,12 +131,9 @@ void Set_Minutes(uint8_t min){
 	uint8_t quotient = min / 10;
 	uint8_t remain = min % 10;
 	
-	//printf("Minute_1 : %d\r\n", quotient);
-	//printf("Minute_2 : %d\r\n", remain);
-	
-    Set_Number(quotient, 3);
+	Set_Number(quotient, 3);
 	HAL_Delay(1);
-    Set_Number(remain, 4);
+	Set_Number(remain, 4);
 	HAL_Delay(1);
 }
 
@@ -203,30 +141,17 @@ void Set_Hours(uint8_t hou){
 	uint8_t quotient = hou / 10;
 	uint8_t remain = hou % 10;
 	
-	//printf("Hour_1 : %d\r\n", quotient);
-	//printf("Hour_2 : %d\r\n", remain);
-	
-    Set_Number(quotient, 1);
+	Set_Number(quotient, 1);
 	HAL_Delay(1);
-    Set_Number(remain, 2);
+	Set_Number(remain, 2);
 	HAL_Delay(1);
 }
 
-void DP_Blink(){
-	//HAL_GPIO_WritePin(DIGIT_DP_GPIO_Port, DIGIT_DP_Pin, 1);
-	HAL_GPIO_TogglePin(DIGIT_DP_GPIO_Port, DIGIT_DP_Pin);
-}
-
-void Calculate_Time(){
-	minute_count = minute_count + second_count / 60;
-	hour_count = hour_count + minute_count / 60;
-	
-	if(hour_count == 24)
-		hour_count = 0;
-	if(minute_count == 60)
-		minute_count = 0;
-	if(second_count == 60)
-		second_count = 0;
+void Set_Colon(void){
+	SSD1306_SetCursor(32, 24);
+	SSD1306_WriteChar(':', Font_16x32, White);
+	  
+	SSD1306_UpdateScreen();
 }
 
 static void RTC_AlarmConfig(uint8_t Hours, uint8_t Minutes)
@@ -261,8 +186,7 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 	
 	Alarm_State = true;
 	
-	HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+	GPIO_SetPin(GPIOC, GPIO_PIN_13);											// Alarm LED ON
 	
 	int random = rand() % 10000;
 	
@@ -274,29 +198,6 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 	
 	ALARM_TIME.Hours = now_time.Hours;
 	ALARM_TIME.Minutes = now_time.Minutes;
-}
-
-void getKey(){
-	for(uint8_t i = 0; i < ROWS; i++){
-		HAL_GPIO_WritePin(ROW_PORT, Row_Pin[i], GPIO_PIN_RESET);
-		for(uint8_t j = 0; j < COLS; j++){
-			if(!HAL_GPIO_ReadPin(COL_PORT, Column_Pin[j]))
-			{
-				//printf("C%d, R%d IN\r\n", (j + 1), (i + 1));
-				while(!HAL_GPIO_ReadPin(COL_PORT, Column_Pin[j]));
-				Key = Keys[i][j];
-				
-				if(isdigit(Key)){
-					get();
-					put(Key);
-				
-					print_queue();
-				}
-				//printf("%s\r\n", get_queue());
-			}
-		}
-		HAL_GPIO_WritePin(ROW_PORT, Row_Pin[i], GPIO_PIN_SET);
-	}
 }
 
 int fputc(int ch, FILE *f){
@@ -319,7 +220,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-	
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -331,112 +232,160 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_I2C1_Init();
   MX_USART1_UART_Init();
-  MX_USART2_UART_Init();
   MX_RTC_Init();
+  MX_TIM4_Init();
 
   /* USER CODE BEGIN 2 */
-	uint8_t old_Seconds = 0;
-	uint8_t count = 0;
+	Keypad_Init();																								// Init Keypad
 	
-	uint8_t old_Key = 0;
+	SSD1306_Init();																								// Init SSD1306
 	
-	uint8_t set_hour = 0;
-	uint8_t set_minu = 0;
+	SSD1306_Fill(Black);																					// Fill Background of Display by Black
+	SSD1306_UpdateScreen();																				// Refresh Display
 	
-	//delete uint8_t alarm_count = 0;
+	init_queue();																									// Init Queue
 	
-	uint8_t Volume = BASE_VOLUME;
+	uint8_t old_Seconds = 0;																			
 	
-	for(uint8_t i = 0; i < ROWS; i++){
-		HAL_GPIO_WritePin(ROW_PORT, Row_Pin[i], GPIO_PIN_SET);
-	}
-	
-	init_queue();	// Init Queue
-	
-	mp3_set_volume(Volume);
-	
+	uint8_t set_hour = 0;																					// Hour Parameter
+	uint8_t set_minu = 0;																					// Minute Parameter
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	while (1)
-	{
+  while (1)
+  {
+	  Set_Colon();																								// Display Colon 
+		
 		/* Get the RTC current Time */
 		HAL_RTC_GetTime(&hrtc, &time_instructure, RTC_FORMAT_BIN);
-		
-		count++;	// time count for DP Blink. 1 Second => 124 or 123, 500 MilliSeconds is APPROX 62.
 		
 		// 1 Second
 		if(old_Seconds != time_instructure.Seconds){
 			old_Seconds = time_instructure.Seconds;
 			printf("%02d:%02d:%02d\r\n", time_instructure.Hours, time_instructure.Minutes, old_Seconds);
-			//printf("Count : %d\r\n", count);
-			DP_Blink();		// DP Blink
-			count = 0;		// time count reset
 		}
 		
-		// 500 MilliSeconds
-		if(count == 62){
-			DP_Blink();		// DP Blink
-		}
-		
-		if(time_instructure.Hours == ALARM_TIME.Hours && time_instructure.Minutes - ALARM_TIME.Minutes > 0){
-			// Volume 10Points UP  
-			if(Volume == BASE_VOLUME){
-				Volume += 10;
-				
-				mp3_set_volume(Volume);
-			}
-		}
-		
-		// Setting Session Button Input
-		if(!HAL_GPIO_ReadPin(Touch_1_GPIO_Port, Touch_1_Pin)){
-			while(!HAL_GPIO_ReadPin(Touch_1_GPIO_Port, Touch_1_Pin));
-			if(Setting_Session == false){
+		// Setting Session Button Input Pull Down
+		if(HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && !HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin)){
+			while(HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && !HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin));					// Release Button1
+			
+			if(Setting_Session == false){															// If Current State wasn't Setting Session
 				printf("Set Button 1\r\n");
 				
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_RESET);
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("Setting", Font_7x10, White);				// Display "Setting"
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
 				
-				Setting_Session = true;
-				Alarm_Session = false;
+				GPIO_SetPin(LED1_GPIO_Port, LED1_Pin);	 								// LED1 ON
+				GPIO_ResetPin(LED2_GPIO_Port, LED2_Pin);								// LED2 OFF
+				
+				Setting_Session = true;																	// Enter Setting Session
+				Alarm_Session = false;																	// Not a Alarm Session
 			}
-			else if(Setting_Session == true){
+			
+			else if(Setting_Session == true){													// If Current State was Setting Session
 				printf("Set Button 0\r\n");
 				
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_RESET);
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("       ", Font_7x10, White);				// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
 				
-				Setting_Session = false;
+				GPIO_ResetPin(LED1_GPIO_Port, LED1_Pin);								// LED1 OFF
+				GPIO_ResetPin(LED2_GPIO_Port, LED2_Pin);								// LED2 OFF
+				
+				Setting_Session = false;																// Leave Setting Session
+				Alarm_Session = false;																	// Not a Alarm Session
 			}
 		}
 		
-		// Alarm Session Button Input
-		if(!HAL_GPIO_ReadPin(Touch_2_GPIO_Port, Touch_2_Pin)){
-			while(!HAL_GPIO_ReadPin(Touch_1_GPIO_Port, Touch_1_Pin));
-			if(Alarm_Session == false){
+		// Alarm Session Button Input Pull Down
+		if(!HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin)){
+			while(!HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin));					// Release Button2
+			
+			if(Alarm_Session == false){																// If Current State wasn't Alarm Session
 				printf("Set Button 1\r\n");
 				
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET);
+				SSD1306_SetCursor(32, 0);																
+				SSD1306_WriteString("Password", Font_7x10, White);			// Display "Password"
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
 				
-				Alarm_Session = true;
-				Setting_Session = false;
+				GPIO_ResetPin(LED1_GPIO_Port, LED1_Pin);								// LED1 OFF
+				GPIO_SetPin(LED2_GPIO_Port, LED2_Pin);									// LED2 ON
+				
+				Alarm_Session = true;																		// Enter Alarm Session
+				Setting_Session = false;																// Not a Setting Session
+			}
+			
+			else if(Alarm_Session == true){														// If Current State was Alarm Session
+				printf("Set Button 0\r\n");
+				
+				GPIO_ResetPin(LED1_GPIO_Port, LED1_Pin);								// LED1 OFF
+				GPIO_SetPin(LED2_GPIO_Port, LED2_Pin);									// LED2 ON
+				
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("        ", Font_7x10, White);			// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
+				
+				Alarm_Session = false;																	// Leave Alarm Session
+				Setting_Session = false;																// Not a Setting Session
+			}
+		}
+		
+		// 
+		if(HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin)){
+			while(HAL_GPIO_ReadPin(BT1_GPIO_Port, BT1_Pin) && HAL_GPIO_ReadPin(BT2_GPIO_Port, BT2_Pin));
+			
+			if(Time_Session == false){
+				SSD1306_SetCursor(32, 0);																
+				SSD1306_WriteString("Time Setting", Font_7x10, White);	// Display "Time Setting"
+				
+				SSD1306_UpdateScreen();																	// Refresh Display
+					
+				// Get Total Data What Inside Of Queue And Put '0'
+				for(int i = 0; i < 4; i ++){
+					get();																								// Pop
+					put('0');																							// Push
+				}
+				
+				Time_Session = true;																		// 
+				Alarm_Session = false;																	// Leave Alarm Session
+				Setting_Session = false;																// Not a Setting Session
+			}
+			else if(Time_Session == true){
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("            ", Font_7x10, White);			// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
+				
+				Time_Session = false;																		// 
+				Alarm_Session = false;																	// Leave Alarm Session
+				Setting_Session = false;																// Not a Setting Session
 			}
 		}
 		
 		// Common Clock State
 		if(!Setting_Session && !Alarm_State){
 			//printf("Set Time\r\n");
-			Set_Minutes(time_instructure.Minutes);
-			Set_Hours(time_instructure.Hours);
+			Set_Minutes(time_instructure.Minutes);										// Set Present Minutes
+			Set_Hours(time_instructure.Hours);												// Set Present Hours
 		}
 		
 		// Alarm Session. Will Display Password
 		else if(Alarm_State){
-			Set_Minutes(password_2);
-			Set_Hours(password_1);
+			SSD1306_SetCursor(32, 0);
+			SSD1306_WriteString("Alarm", Font_7x10, White);						// Display "Alarm"
+	  
+			SSD1306_UpdateScreen();																		// Refresh Display
+			
+			Set_Hours(password_1);																		// Set Password_1
+			Set_Minutes(password_2);																	// Set Password_2
 		}
 		
 		// If Setting Session
@@ -445,37 +394,37 @@ int main(void)
 			//printf("Setting Session IN\r\n");
 			
 			// Display Number
-			Set_Minutes(set_minu);
-			Set_Hours(set_hour);
+			Set_Minutes(set_minu);																		// Set Present Minutes
+			Set_Hours(set_hour);																			// Set Present Hours
 			
 			// Read Input By Keypad
-			getKey();
-		
-			if(old_Key != Key){
-				old_Key = Key;
-				printf("%c IN\r\n", Key);
+			char Key = GetKey();
+			
+			if(isdigit(Key)){																					// If Input Number by Keypad
+					get();																								// Pop
+					put(Key);																							// Push
+				
+					print_queue();																				// Print Queue
 			}
 			
 			// Reset Number to 00:00
-			if(old_Key == '*'){
+			if(Key == '*'){
 				
 				// Get Total Data What Inside Of Queue And Put '0'
 				for(int i = 0; i < 4; i ++){
-					get();
-					put('0');	
+					get();																								// Pop
+					put('0');																							// Push
 				}
 				
 				// Reset Setting Value
 				set_minu = 0;
 				set_hour = 0;
 				
-				print_queue();
-				
-				Key = '0';
+				print_queue();																					// Print Queue
 			}
 			
 			// Set Alarm Time And Come Back To Clock
-			if(old_Key == '#'){
+			if(Key == '#'){
 				// Setting Alarm
 				RTC_AlarmConfig(set_hour, set_minu);
 				
@@ -483,22 +432,25 @@ int main(void)
 				
 				// Get Total Data What Inside Of Queue And Put '0'
 				for(int i = 0; i < 4; i ++){
-					get();
-					put('0');
+					get();																								// Pop
+					put('0');																							// Push
 				}
 				
 				// Reset Setting Value
 				set_minu = 0;
 				set_hour = 0;
 				
-				print_queue();
+				print_queue();																					// Print Queue
 				
-				Key = '0';
+				GPIO_ResetPin(LED1_GPIO_Port, LED1_Pin);								// LED1 OFF
+				GPIO_ResetPin(LED2_GPIO_Port, LED2_Pin);								// LED2 OFF
 				
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_RESET);
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("        ", Font_7x10, White);			// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
 				
-				Setting_Session = false;
+				Setting_Session = false;																// Leave Setting Session
 			}		
 			// Change Display Number			
 			else {
@@ -514,41 +466,112 @@ int main(void)
 			//printf("Alarm Session IN\r\n");
 			
 			// Read Input By Keypad
-			getKey();
-		
-			if(old_Key != Key){
-				old_Key = Key;
-				printf("%c IN\r\n", Key);
+			char Key = GetKey();
+			
+			if(isdigit(Key)){																					// If Input Number by Keypad
+					get();																								// Pop
+					put(Key);																							// Push
+				
+					print_queue();																				// Print Queue
 			}
 			
-			if(password_1 == ( ((get_queue()[0] - '0') * 10) + (get_queue()[1] - '0') ) && password_2 == ( ((get_queue()[2] - '0') * 10) + (get_queue()[3] - '0') )){
-				// Alarm Off
-				HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
+			// If Password Correct
+			if(password_1 == ( ((get_queue()[0] - '0') * 10) + (get_queue()[1] - '0') ) 
+				&& password_2 == ( ((get_queue()[2] - '0') * 10) + (get_queue()[3] - '0') )){
+				// Alarm Off : All Led Off
+				GPIO_ResetPin(GPIOC, GPIO_PIN_13);											// Alarm LED OFF
 				
 				// Get Total Data What Inside Of Queue And Put '0'
 				for(int i = 0; i < 4; i ++){
-					get();
-					put('0');
+					get();																								// Pop
+					put('0');																							// Push
 				}
 				
-				print_queue();
-			
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_RESET);
+				print_queue();																					// Print Queue	
 				
-				Alarm_State = false;
-				Alarm_Session = false;
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("        ", Font_7x10, White);			// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
+				
+				Alarm_State = false;																		// Alarm Off
+				Alarm_Session = false;																	// Leave Alarm Session
 			}
 		}
+	  
+		if(Time_Session){
+			char Key = GetKey();
+			
+			if(isdigit(Key)){																					// If Input Number by Keypad
+					get();																								// Pop
+					put(Key);																							// Push
+				
+					print_queue();																				// Print Queue
+			}
+			
+			// Reset Number to 00:00
+			if(Key == '*'){
+				
+				// Get Total Data What Inside Of Queue And Put '0'
+				for(int i = 0; i < 4; i ++){
+					get();																								// Pop
+					put('0');																							// Push
+				}
+				
+				// Reset Setting Value
+				set_minu = 0;
+				set_hour = 0;
+				
+				print_queue();																					// Print Queue
+			}
+			
+			// Set Alarm Time And Come Back To Clock
+			if(Key == '#'){
+				// Setting Time
+				RTC_TimeTypeDef set_time_instructure;
 		
-		// ENTER ALARM SETTING PAGE
-
+				time_instructure.Hours = set_hour;  
+				time_instructure.Minutes = set_minu;
+				time_instructure.Seconds = 0;
+	
+				HAL_RTC_SetTime(&hrtc, &time_instructure, RTC_FORMAT_BIN);
+				
+				printf("Time Set in %02d:%02d\r\n", set_hour, set_minu);
+				
+				// Get Total Data What Inside Of Queue And Put '0'
+				for(int i = 0; i < 4; i ++){
+					get();																								// Pop
+					put('0');																							// Push
+				}
+				
+				// Reset Setting Value
+				set_minu = 0;
+				set_hour = 0;
+				
+				print_queue();																					// Print Queue
+				
+				GPIO_ResetPin(LED1_GPIO_Port, LED1_Pin);								// LED1 OFF
+				GPIO_ResetPin(LED2_GPIO_Port, LED2_Pin);								// LED2 OFF
+				
+				SSD1306_SetCursor(32, 0);
+				SSD1306_WriteString("            ", Font_7x10, White);	// Clear Diplay Line
+	  
+				SSD1306_UpdateScreen();																	// Refresh Display
+				
+				Time_Session = false;																// Leave Setting Session
+			}		
+			// Change Display Number			
+			else {
+				// ex) Queue [ 0 | 5 | 3 | 0 ] means 05:30 => set_hour = 05, set_minu = 30 
+				set_hour = ((get_queue()[0] - '0') * 10) + (get_queue()[1] - '0');
+				set_minu = ((get_queue()[2] - '0') * 10) + (get_queue()[3] - '0');
+			}
+		}
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		//HAL_UART_Receive_IT(&huart1, Buffer, 6);
-	}
+
+  }
   /* USER CODE END 3 */
 
 }
@@ -610,22 +633,173 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-//	if(huart->Instance == USART1){
-//		uint8_t hours = ((Buffer[0] - 0x30) * 10) + (Buffer[1] - 0x30);
-//		uint8_t minutes = ((Buffer[2] - 0x30) * 10) + (Buffer[3] - 0x30);
-//		uint8_t seconds = ((Buffer[4] - 0x30) * 10) + (Buffer[5] - 0x30);
-//		
-//		RTC_TimeTypeDef time_instructure;
-//		
-//		time_instructure.Hours = hours;
-//		time_instructure.Minutes = minutes;
-//		time_instructure.Seconds = seconds;
-//	
-//		HAL_RTC_SetTime(&hrtc, &time_instructure, RTC_FORMAT_BIN);
-//	}
+/* I2C1 init function */
+static void MX_I2C1_Init(void)
+{
+
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
 }
+
+/* RTC init function */
+static void MX_RTC_Init(void)
+{
+
+  RTC_TimeTypeDef sTime;
+  RTC_DateTypeDef DateToUpdate;
+
+    /**Initialize RTC Only 
+    */
+  hrtc.Instance = RTC;
+  hrtc.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+  hrtc.Init.OutPut = RTC_OUTPUTSOURCE_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Initialize RTC and set the Time and Date 
+    */
+  if(HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1) != 0x32F2){
+  sTime.Hours = 0x1;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+  DateToUpdate.Month = RTC_MONTH_JANUARY;
+  DateToUpdate.Date = 0x1;
+  DateToUpdate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    HAL_RTCEx_BKUPWrite(&hrtc,RTC_BKP_DR1,0x32F2);
+  }
+
+}
+
+/* TIM4 init function */
+static void MX_TIM4_Init(void)
+{
+
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 0;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/* USART1 init function */
+static void MX_USART1_UART_Init(void)
+{
+
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/** Configure pins as 
+        * Analog 
+        * Input 
+        * Output
+        * EVENT_OUT
+        * EXTI
+*/
+static void MX_GPIO_Init(void)
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, LED1_Pin|LED2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LED1_Pin LED2_Pin */
+  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BT1_Pin BT2_Pin */
+  GPIO_InitStruct.Pin = BT1_Pin|BT2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+}
+
+/* USER CODE BEGIN 4 */
+
 /* USER CODE END 4 */
 
 /**

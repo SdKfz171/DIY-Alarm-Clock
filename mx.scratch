@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Project>
-<ProjectName>C:\Users\DELL\Documents\CoretexSource\CubeSource\Alarm_Clock\\Alarm_Clock</ProjectName>
+<ProjectName>C:\Users\DELL\Documents\CoretexSource\CubeSource\ALARM_CLOCK_2\\ALARM_CLOCK_2</ProjectName>
 <CMSIS>..\Drivers\CMSIS</CMSIS>
 <HAL_Driver>C:\Users\DELL\STM32Cube\Repository\STM32Cube_FW_F1_V1.6.1\Drivers\CMSIS</HAL_Driver>
 
@@ -10,7 +10,7 @@
 
 <filestoremove>
 	<file>
-	   		<name>..\Drivers\CMSIS\Device\ST\STM32F1xx\Source\Templates\arm\startup_stm32f103xe.s</name>
+	   		<name>..\Drivers\CMSIS\Device\ST\STM32F1xx\Source\Templates\arm\startup_stm32f103xb.s</name>
 	</file>
 </filestoremove>
 
@@ -24,8 +24,8 @@
 
 <configs>
   <config>
-    <name>Alarm_Clock</name>				
-    <device>STM32F103VETx</device>		 
+    <name>ALARM_CLOCK_2</name>				
+    <device>STM32F103C8Tx</device>		 
     <heapSize>0x200</heapSize>
     <stackSize>0x400</stackSize>
     
@@ -79,6 +79,9 @@
 		 		<name>STM32F1xx_HAL_Driver</name>
 						<file>
 							<name>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c</name>
+						</file>
+						<file>
+							<name>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_i2c.c</name>
 						</file>
 						<file>
 							<name>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rtc.c</name>
@@ -136,18 +139,6 @@
 	      <name>User</name>  
                                 <file>
                                  <name>..\Src\main.c</name>
-                                </file>
-
-                                <file>
-                                 <name>..\Src\gpio.c</name>
-                                </file>
-
-                                <file>
-                                 <name>..\Src\rtc.c</name>
-                                </file>
-
-                                <file>
-                                 <name>..\Src\usart.c</name>
                                 </file>
 
                                 <file>

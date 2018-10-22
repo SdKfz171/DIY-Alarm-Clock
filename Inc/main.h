@@ -47,56 +47,14 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define SEG_DP_Pin GPIO_PIN_7
-#define SEG_DP_GPIO_Port GPIOE
-#define SEG_A_Pin GPIO_PIN_8
-#define SEG_A_GPIO_Port GPIOE
-#define SEG_B_Pin GPIO_PIN_9
-#define SEG_B_GPIO_Port GPIOE
-#define SEG_C_Pin GPIO_PIN_10
-#define SEG_C_GPIO_Port GPIOE
-#define SEG_D_Pin GPIO_PIN_11
-#define SEG_D_GPIO_Port GPIOE
-#define SEG_E_Pin GPIO_PIN_12
-#define SEG_E_GPIO_Port GPIOE
-#define SEG_F_Pin GPIO_PIN_13
-#define SEG_F_GPIO_Port GPIOE
-#define SEG_G_Pin GPIO_PIN_14
-#define SEG_G_GPIO_Port GPIOE
-#define DIGIT_1_Pin GPIO_PIN_10
-#define DIGIT_1_GPIO_Port GPIOB
-#define DIGIT_2_Pin GPIO_PIN_11
-#define DIGIT_2_GPIO_Port GPIOB
-#define DIGIT_3_Pin GPIO_PIN_12
-#define DIGIT_3_GPIO_Port GPIOB
-#define DIGIT_4_Pin GPIO_PIN_13
-#define DIGIT_4_GPIO_Port GPIOB
-#define DIGIT_DP_Pin GPIO_PIN_14
-#define DIGIT_DP_GPIO_Port GPIOB
-#define LED1_Pin GPIO_PIN_6
-#define LED1_GPIO_Port GPIOC
-#define LED2_Pin GPIO_PIN_7
-#define LED2_GPIO_Port GPIOC
-#define Touch_1_Pin GPIO_PIN_10
-#define Touch_1_GPIO_Port GPIOC
-#define Touch_2_Pin GPIO_PIN_11
-#define Touch_2_GPIO_Port GPIOC
-#define R1_Pin GPIO_PIN_0
-#define R1_GPIO_Port GPIOD
-#define R2_Pin GPIO_PIN_1
-#define R2_GPIO_Port GPIOD
-#define R3_Pin GPIO_PIN_2
-#define R3_GPIO_Port GPIOD
-#define R4_Pin GPIO_PIN_3
-#define R4_GPIO_Port GPIOD
-#define C1_Pin GPIO_PIN_4
-#define C1_GPIO_Port GPIOD
-#define C2_Pin GPIO_PIN_5
-#define C2_GPIO_Port GPIOD
-#define C3_Pin GPIO_PIN_6
-#define C3_GPIO_Port GPIOD
-#define C4_Pin GPIO_PIN_7
-#define C4_GPIO_Port GPIOD
+#define LED1_Pin GPIO_PIN_0
+#define LED1_GPIO_Port GPIOB
+#define LED2_Pin GPIO_PIN_1
+#define LED2_GPIO_Port GPIOB
+#define BT1_Pin GPIO_PIN_10
+#define BT1_GPIO_Port GPIOB
+#define BT2_Pin GPIO_PIN_11
+#define BT2_GPIO_Port GPIOB
 
 /* ########################## Assert Selection ############################## */
 /**

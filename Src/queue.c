@@ -55,29 +55,3 @@ char * get_queue(void){
         buf[j] = queue[i]; 
 	return (char *)buf;
 }
-
-//int main(void){
-
-//    int i;
-//    init_queue();
-
-//    printf("\nPut 0, 0, 0, 0");
-//    put(0);
-//    put(0);
-//    put(0);
-//    put(0);
-//    print_queue();
-//    
-//    while(1){
-//        int a;
-//        //scanf("%d", &a);
-
-//        i = get();
-//        put(a);
-//        printf("%d OUT %d IN\r\n", i, a);
-
-//        print_queue();
-//    }
-
-//    return 0;
-//}
